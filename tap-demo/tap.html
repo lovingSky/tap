@@ -1,0 +1,272 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,user-scalable=no" />
+    <title>无标题文档</title>
+    <style id="css">
+        * {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+        }
+
+        body {
+            margin: 0;
+        }
+
+        #wrap {
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            height: 150px;
+        }
+
+        .css {
+            -webkit-transform: translate3d(0, 0, 0);
+            -moz-transform: translate3d(0, 0, 0);
+            -ms-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+        }
+
+        #list {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            width: 100%;
+        }
+
+        #list li {
+            /*float: left;*/
+            height: 150px;
+            width: 100%;
+            /*元素旋转时隐藏背面*/
+            -webkit-backface-visibility: hidden;
+        }
+
+        #list img {
+            width: 100%;
+            display: block;
+            height: 100%;
+        }
+
+        #nav {
+            position: absolute;
+            left: 0;
+            bottom: 3px;
+            width: 100%;
+            line-height: 10px;
+            text-align: center;
+        }
+
+        #nav span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #C00;
+            border-radius: 5px;
+        }
+
+        #nav .active {
+            background: #0F0;
+        }
+    </style>
+    <script src="transform.js"></script>
+</head>
+
+<body>
+    <div id="wrap" class="css">
+        <ul id="list" class="css">
+            <li>
+                <a href="#">
+                    <img src="img/1.jpg" />
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <img src="img/2.jpg" />
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <img src="img/3.jpg" />
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <img src="img/4.jpg" />
+                </a>
+            </li>
+        </ul>
+        <nav id="nav">
+            <span class="active"></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </nav>
+    </div>
+    <script>
+        //去除浏览器默认的事件
+        document.addEventListener('touchstart', function(ev) {
+            ev.preventDefault();
+        },false)
+        //实现一个图片轮播的切换
+        // 布局的转换
+        //获取元素
+        var oWrap = document.querySelector('#wrap');
+        var oPics = document.querySelector('#list');
+        var aPageDot = document.querySelectorAll('#nav span');
+        var aLi = oPics.getElementsByTagName('li');
+        var oLen = aLi[0].offsetWidth;
+        var oHen = aLi[0].offsetHeight;
+        [].forEach.call(aLi, function(item, i) {
+            item.style.width = oLen + 'px';
+            item.style.float = 'left';
+            item.dataset['index'] = i;
+        });
+        if (aLi.length > 2) {
+            var oHeadLi = aLi[0].cloneNode(true);
+            var oLastLi = aLi[aLi.length - 1].cloneNode(true);
+            //console.log(oHeadLi);
+            oPics.insertBefore(oLastLi, aLi[0]);
+            oPics.appendChild(oHeadLi);
+        };
+        //重新赋值
+        //oWrap.style.width = oLen + 'px';
+        oWrap.style.height = oHen + 'px';
+        oPics.style.width = aLi.length * oLen + 'px';
+        cssTransform(oPics, 'translateX', -oLen);
+        //初始left值
+        var initLeft = 0;
+        //记录Y的值 防止斜着滑屏的时候出现移动
+        var initY = 0;
+        //记录着刚开始的transitionX的值
+        var initPosition = 0;
+        //move的距离 x方向的
+        var dis = 0;
+        //Y方向的move的距离
+        var disY = 0;
+        //图片的索引
+        var oIndex = 0;
+        //计算速度的初始时间
+        var startTime = 0;
+        //定时器
+        var timer = null;
+        //toucheend的时候出发定时器 此时要看看在不在运动的状态
+        isMoving = false;
+        // 处理小点
+        function changePagenation(aPageDot, index) {
+            [].map.call(aPageDot, function(item, i) {
+                // 不管怎么循环 list元素身上的 dataset属性始终是初始的时候所在的索引，分页的顺序始终是与原先的索引对应
+                if (i == aLi[index].dataset['index']) {
+                    item.className = 'active';
+                } else {
+                    item.className = '';
+                }
+            })
+        }
+        //获取移动目标的初始 translateX的值，通过这个值 判断 index的值 最后实现slide
+        function initTrans() {
+            initPosition = cssTransform(oPics, 'translateX');
+            oIndex = (Math.abs(initPosition) / oLen);
+        }
+        //滑动的动作 dis是移动的方向 >0 往右
+        function slideMove(dis) {
+            if (dis > 0) {
+                cssTransform(oPics, 'translateX', initPosition + oLen);
+                changePagenation(aPageDot, oIndex - 1);
+            } else {
+                cssTransform(oPics, 'translateX', initPosition - oLen);
+                changePagenation(aPageDot, oIndex + 1);
+            }
+        }
+        //重置无线循环的位置，比如第一个换到原先队列的最后一个的位置
+        function changePosLoop() {
+            oPics.style.transition = oPics.style.webkitTransition = 'none';
+            if (oIndex === 0) {
+                cssTransform(oPics, 'translateX', -(aLi.length - 2) * oLen);
+                initPosition = -(aLi.length - 2) * oLen;
+                oIndex = (Math.abs(initPosition) / oLen);
+            } else if (oIndex === aLi.length - 1) {
+                cssTransform(oPics, 'translateX', -oLen);
+                initPosition = -oLen;
+                oIndex = (Math.abs(initPosition) / oLen);
+            }
+        }
+
+        function setTransition(oPics, time) {
+            oPics.style.transition = oPics.style.webkitTransition = time;
+        }
+
+        oWrap.addEventListener('touchstart', function(ev) {
+            if (timer) {
+                clearInterval(timer);
+            }
+            initLeft = ev.changedTouches[0].pageX;
+            initY = ev.changedTouches[0].pageY;
+            startTime = new Date().getTime();
+            //这块在监听touchend事件的时候回出现问题，原先的思路是直接用touchend事件来改变布局，但是如果滑屏过快的时候会出现 还没等end事件出发就先移动了，所以就会出现“can not find property of dataset。。。。。”touchstart监听这些事件就有效地避免了这个bug
+            initTrans();
+            changePosLoop();
+        }, false);
+
+        oWrap.addEventListener('touchmove', function(ev) {
+            if (timer) {
+                clearInterval(timer);
+            }
+            dis = ev.changedTouches[0].pageX - initLeft;
+            disY = ev.changedTouches[0].pageY - initY;
+            var moveAll = initPosition + dis;
+            var timeDis = (new Date().getTime() - startTime);
+            if (Math.abs(disY) > Math.abs(dis) || timeDis < 100) {
+                return;
+            } else {
+                cssTransform(oPics, 'translateX', moveAll);
+            }
+            ev.preventDefault();
+        }, false);
+
+        oWrap.addEventListener('touchend', function(ev) {
+            //如果速度过快也可以滑动 模仿手势 我是用速度来模仿的 后面加一个距离是防止 点击的时候 误触了
+            var speedMove = dis / (new Date().getTime() - startTime);
+            //oPics.style.transition = oPics.style.webkitTransition = '0.35s';
+            setTransition(oPics, '0.35s');
+            if (Math.abs(speedMove) > 0.2 && Math.abs(dis) > 5 && Math.abs(disY) < Math.abs(dis)) {
+                slideMove(dis);
+            } else {
+                if (Math.abs(dis) > 0.5 * oLen) {
+                    slideMove(dis);
+                } else {
+                    cssTransform(oPics, 'translateX', initPosition);
+                }
+            }
+        }, false);
+
+        //增加一个定时器---autoplay
+        function autoPlay() {
+            timer = setTimeout(function() {
+                initTrans();
+                //oPics.style.transition = oPics.style.webkitTransition = '0.3s';
+                setTransition(oPics, '0.35s');
+                cssTransform(oPics, 'translateX', initPosition - oLen);
+                changePagenation(aPageDot, oIndex + 1);
+            }, 2000)
+        }
+
+        //默认开始的时候autopaly
+        autoPlay();
+        //监听 touchend事件--通过touchend来出发定时器以及布局的变化
+        oPics.addEventListener('transitionend', function() {
+            if (timer) {
+                clearTimeout(timer);
+            }
+            initTrans();
+            changePosLoop();
+            autoPlay();
+        },false)
+    </script>
+</body>
+
+</html>
